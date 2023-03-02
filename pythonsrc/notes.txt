@@ -1,0 +1,4 @@
+https://github.com/Azure/azure-iot-sdk-python
+
+pip3 install azure-iot-device
+pip3 install asyncio

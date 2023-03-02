@@ -4,8 +4,8 @@ from picamera2 import Picamera2, Preview
 import PIL.Image
 import numpy as np
 
-usb_cam_port = '/dev/video0'
-csi_cam_port = 'dev/video2'
+usb_cam_port = '/dev/video1'
+csi_cam_port = 'dev/video0'
 
 def rgba2rgb( rgba, background=(255,255,255) ):
     row, col, ch = rgba.shape
