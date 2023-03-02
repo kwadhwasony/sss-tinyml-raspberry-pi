@@ -15,6 +15,11 @@ import numpy as np
 # globals
 picam = {}
 runner = None
+azure_client = None
+#CONNECTION_STRING = "HostName=sonydemoiothub.azure-devices.net;DeviceId=sonytestdevice;SharedAccessKey=p/c31bhBeVelkeYLcx7Bws5BY5tBYXym3v1Tg7xTK/U="
+CONNECTION_STRING = "HostName=testhubname0.azure-devices.net;DeviceId=RPiDevice0;SharedAccessKey=hv82yeuIj9GTTXnAhuw8HWk7NGUOp9NU4NO/0NOMb9E="
+PAYLOAD = '{{"X": {x_start}, "Y": {y_start}, "x":{height}, "y":{width}}}'
+
 
 # if you don't want to see a camera preview, set this to False
 show_camera = True
@@ -93,10 +98,21 @@ def test(frame_to_write):
 def help():
     print('python demo.py <path_to_model.eim> <Camera port ID, only required when more than 1 camera is present>')
 
+# method to initialize azure client
+def azure_client_init():
+	global azure_client
+	azure_client = IoTHubDeviceClient.create_from_connection_string(CONNECTION_STRING)
+	# todo: should return success failure
+
+async def azure_client_send_payload(payload):
+	global azure_client
+	await azure_client.send_message(payload)
+
 # main method
-def main(argv):
+async def main(argv):
 	print('main started')
 	global picam
+	global azure_client
 
 	# check for valid arguments
 	try:
@@ -126,11 +142,10 @@ def main(argv):
 	# initialze edge-impulse-related things
 
 	# initialize azure iot related things
-
+	azure_client_init()
 	
 	with ImageImpulseRunner(modelfile) as runner:
 		try:
-			print("Debug 0");
 			model_info = runner.init()
 			print('Loaded runner for "' + model_info['project']['owner'] + ' / ' + model_info['project']['name'] + '"')
 			labels = model_info['model_parameters']['labels']
@@ -166,14 +181,15 @@ def main(argv):
 				features, img = runner.get_features_from_image(img_csi_rgb)
 				res = runner.classify(features)
 
-				print("Debug 1");
-				print(img)
 				if (next_frame > now()):
 					time.sleep((next_frame - now()) / 1000)
 
-				# print('classification runner response', res)
-
+				print("Result")
+				print(res)
+				
+				# if there is classification in keys()
 				if "classification" in res["result"].keys():
+					print('classification')
 					print('Result (%d ms.) ' % (res['timing']['dsp'] + res['timing']['classification']), end='')
 					for label in labels:
 						score = res['result']['classification'][label]
@@ -185,6 +201,19 @@ def main(argv):
 					for bb in res["result"]["bounding_boxes"]:
 						print('\t%s (%.2f): x=%d y=%d w=%d h=%d' % (bb['label'], bb['value'], bb['x'], bb['y'], bb['width'], bb['height']))
 						img = cv2.rectangle(img, (bb['x'], bb['y']), (bb['x'] + bb['width'], bb['y'] + bb['height']), (255, 0, 0), 1)
+						
+				if "bounding_boxes" in res["result"].keys():
+					# get the box with the max value, save as top_dog
+					top_dog = res["result"]["bounding_boxes"][0]
+					print("Top Dog")
+					print(top_dog)
+					#PAYLOAD = '{{"X": {x_start}, "Y": {y_start}, "x":{height}, "y":{width}}}'
+					payload = PAYLOAD.format(x_start=top_dog["x"], y_start=top_dog["y"], height=top_dog["height"], width=top_dog["width"])
+					print('Payload')
+					print(payload)
+					print('Sending payload to azure')
+					await azure_client_send_payload(payload)
+						
 
 				if (show_camera):
 					cv2.imshow('edgeimpulse', cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
@@ -204,4 +233,5 @@ def main(argv):
 	
 	
 if __name__ == "__main__":
-   main(sys.argv[1:])
+	asyncio.run(main(sys.argv[1:]))
+	#main(sys.argv[1:])
