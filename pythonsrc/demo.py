@@ -73,7 +73,11 @@ def camera_init():
 	global picam
 	print('Opening CSI Camera with Picamera2 Library')
 	picam = Picamera2()
-	config = picam.create_preview_configuration()
+	#preview_config = picam2.create_preview_configuration()
+	#capture_config = picam2.create_still_configuration()
+	#picam2.configure(capture_config)
+	#config = picam.create_preview_configuration()
+	config = picam.create_still_configuration()
 	picam.configure(config)
 	picam.start()
 	# todo: add a way to check if initialized properly
@@ -153,11 +157,13 @@ async def main(argv):
 			while True:
 				# get image array from the camera (rgba)
 				img_csi = picam.capture_array()
+				print(len(img_csi), len(img_csi[0]))
 				# change that to rgb format
 				img_csi_rgb = rgba2rgb(img_csi)
 				# feed to edge impulse methods
 				features, img = runner.get_features_from_image(img_csi_rgb)
 				res = runner.classify(features)
+				print(len(img), len(img[0]))
 
 				# tradition delay is induced here
 				# todo: remove/optimize this for best frame rate
@@ -166,17 +172,17 @@ async def main(argv):
 				
 				# if there is classification in keys()
 				# todo: check if we need all these printed results of if we need this if elif block
-				#if "classification" in res["result"].keys():
-				#	print('Result (%d ms.) ' % (res['timing']['dsp'] + res['timing']['classification']), end='')
-				#	for label in labels:
-				#		score = res['result']['classification'][label]
-				#		print('%s: %.2f\t' % (label, score), end='')
-				#	print('', flush=True)
-				#elif "bounding_boxes" in res["result"].keys():
-				#	print('Found %d bounding boxes (%d ms.)' % (len(res["result"]["bounding_boxes"]), res['timing']['dsp'] + res['timing']['classification']))
-				#	for bb in res["result"]["bounding_boxes"]:
-				#		print('\t%s (%.2f): x=%d y=%d w=%d h=%d' % (bb['label'], bb['value'], bb['x'], bb['y'], bb['width'], bb['height']))
-				#		img = cv2.rectangle(img, (bb['x'], bb['y']), (bb['x'] + bb['width'], bb['y'] + bb['height']), (255, 0, 0), 1)
+				if "classification" in res["result"].keys():
+					print('Result (%d ms.) ' % (res['timing']['dsp'] + res['timing']['classification']), end='')
+					for label in labels:
+						score = res['result']['classification'][label]
+						print('%s: %.2f\t' % (label, score), end='')
+					print('', flush=True)
+				elif "bounding_boxes" in res["result"].keys():
+					print('Found %d bounding boxes (%d ms.)' % (len(res["result"]["bounding_boxes"]), res['timing']['dsp'] + res['timing']['classification']))
+					for bb in res["result"]["bounding_boxes"]:
+						print('\t%s (%.2f): x=%d y=%d w=%d h=%d' % (bb['label'], bb['value'], bb['x'], bb['y'], bb['width'], bb['height']))
+						img = cv2.rectangle(img, (bb['x'], bb['y']), (bb['x'] + bb['width'], bb['y'] + bb['height']), (255, 0, 0), 1)
 						
 				if "bounding_boxes" in res["result"].keys():
 					# get the box with the max value, save as top_dog
@@ -186,12 +192,12 @@ async def main(argv):
 						
 				# todo: remove this entirely for the demo. We do not even need to spend time to check the if condition every time
 				# this is only for visualization at the edge
-				#if (show_camera):
-				#	cv2.imshow('edgeimpulse', cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-				#	if cv2.waitKey(1) == ord('q'):
-				#		break
+				if (show_camera):
+					cv2.imshow('edgeimpulse', cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+					if cv2.waitKey(1) == ord('q'):
+						break
 
-				next_frame = now() + 100
+				#next_frame = now() + 100
 
 		finally:
 			if (runner):
