@@ -153,6 +153,12 @@ async def main(argv):
 			# todo: change this to make sure we are able to run at optimum fps
 			next_frame = 0 # limit to ~10 fps here
 
+			#output = cv2.VideoWriter("output.avi", cv2.VideoWriter_fourcc(*'MPEG'), 30, (1080, 1920))
+			#video=cv2.VideoWriter('video.avi',-1,1,(320,320))
+			
+			fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+			video = cv2.VideoWriter('video.avi', fourcc, 1, (320, 320))
+			
 			# todo: change this loop to work only when camera is available
 			while True:
 				# get image array from the camera (rgba)
@@ -182,18 +188,20 @@ async def main(argv):
 					print('Found %d bounding boxes (%d ms.)' % (len(res["result"]["bounding_boxes"]), res['timing']['dsp'] + res['timing']['classification']))
 					for bb in res["result"]["bounding_boxes"]:
 						print('\t%s (%.2f): x=%d y=%d w=%d h=%d' % (bb['label'], bb['value'], bb['x'], bb['y'], bb['width'], bb['height']))
-						img = cv2.rectangle(img, (bb['x'], bb['y']), (bb['x'] + bb['width'], bb['y'] + bb['height']), (255, 0, 0), 1)
+						#img = cv2.rectangle(img, (bb['x'], bb['y']), (bb['x'] + bb['width'], bb['y'] + bb['height']), (255, 0, 0), 1)
 						
 				if "bounding_boxes" in res["result"].keys():
 					# get the box with the max value, save as top_dog
 					top_dog = res["result"]["bounding_boxes"][0]
 					payload = PAYLOAD.format(x_start=top_dog["x"], y_start=top_dog["y"], height=top_dog["height"], width=top_dog["width"])
+					img = cv2.rectangle(img, (top_dog['x'], top_dog['y']), (top_dog['x'] + top_dog['width'], top_dog['y'] + top_dog['height']), (255, 0, 0), 1)
 					await azure_client_send_payload(payload)
 						
 				# todo: remove this entirely for the demo. We do not even need to spend time to check the if condition every time
 				# this is only for visualization at the edge
 				if (show_camera):
-					cv2.imshow('edgeimpulse', cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+					#cv2.imshow('edgeimpulse', cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+					video.write(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
 					if cv2.waitKey(1) == ord('q'):
 						break
 
