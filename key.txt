@@ -1,0 +1,1 @@
+using var deviceClient = DeviceClient.CreateFromConnectionString("HostName=sonydemoiothub.azure-devices.net;DeviceId=raspberrypi;SharedAccessKey=6oqm7FEmLCfhL/W3gMS6yXPP/oq3c3VSFOyilEOFHc8=");
