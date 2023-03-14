@@ -5,9 +5,9 @@ from azure.iot.device.aio import IoTHubDeviceClient
 
 # CONNECTION_STRING = "HostName=testhubname0.azure-devices.net;DeviceId=RPiDevice0;SharedAccessKey=hv82yeuIj9GTTXnAhuw8HWk7NGUOp9NU4NO/0NOMb9E="
 
-# CONNECTION_STRING = "HostName=testhubname0.azure-devices.net;DeviceId=RPiDevice0;SharedAccessKey=hv82yeuIj9GTTXnAhuw8HWk7NGUOp9NU4NO/0NOMb9E="
+CONNECTION_STRING = "HostName=testhubname0.azure-devices.net;DeviceId=RPiDevice0;SharedAccessKey=hv82yeuIj9GTTXnAhuw8HWk7NGUOp9NU4NO/0NOMb9E="
 
-CONNECTION_STRING = "HostName=sonydemoiothub.azure-devices.net;DeviceId=sonytestdevice;SharedAccessKey=p/c31bhBeVelkeYLcx7Bws5BY5tBYXym3v1Tg7xTK/U="
+# CONNECTION_STRING = "HostName=sonydemoiothub.azure-devices.net;DeviceId=sonytestdevice;SharedAccessKey=p/c31bhBeVelkeYLcx7Bws5BY5tBYXym3v1Tg7xTK/U="
 
 TEMPERATURE = 20.0
 HUMIDITY = 33

@@ -11,6 +11,7 @@ from azure.iot.device.aio import IoTHubDeviceClient
 from edge_impulse_linux.image import ImageImpulseRunner
 from picamera2 import Picamera2, Preview
 import numpy as np
+import collections
 
 # globals
 picam = {}
@@ -19,13 +20,25 @@ azure_client = None
 # connection string pointing towards tanmoys iot hub device
 #CONNECTION_STRING = "HostName=sonydemoiothub.azure-devices.net;DeviceId=sonytestdevice;SharedAccessKey=p/c31bhBeVelkeYLcx7Bws5BY5tBYXym3v1Tg7xTK/U="
 # connection string pointing towards iot hub device on kunal.wadhwa@sony.com account
-CONNECTION_STRING = "HostName=testhubname0.azure-devices.net;DeviceId=RPiDevice0;SharedAccessKey=hv82yeuIj9GTTXnAhuw8HWk7NGUOp9NU4NO/0NOMb9E="
-PAYLOAD = '{{"X": {x_start}, "Y": {y_start}, "x":{height}, "y":{width}}}'
+#CONNECTION_STRING = "HostName=testhubname0.azure-devices.net;DeviceId=RPiDevice0;SharedAccessKey=hv82yeuIj9GTTXnAhuw8HWk7NGUOp9NU4NO/0NOMb9E="
+# connection string pointing towards the new raspberrypi device on MSFT
+CONNECTION_STRING = "HostName=sonydemoiothub.azure-devices.net;DeviceId=raspberrypi;SharedAccessKey=6oqm7FEmLCfhL/W3gMS6yXPP/oq3c3VSFOyilEOFHc8="
+PAYLOAD = '{{"deviceId":"raspberrypi", "X": {x_start}, "Y": {y_start}, "x":{height}, "y":{width}, "P":{prob}}}'
 
 # if you don't want to see a camera preview, set this to False
 show_camera = True
 if (sys.platform == 'linux' and not os.environ.get('DISPLAY')):
     show_camera = False
+
+class FPS:
+    def __init__(self,avarageof=50):
+        self.frametimestamps = collections.deque(maxlen=avarageof)
+    def __call__(self):
+        self.frametimestamps.append(time.time())
+        if(len(self.frametimestamps) > 1):
+            return len(self.frametimestamps)/(self.frametimestamps[-1]-self.frametimestamps[0])
+        else:
+            return 0.0
 
 # method to convert rgba to rgb
 # note1: this method only does matrix transforms and does not indeed check
@@ -77,7 +90,9 @@ def camera_init():
 	#capture_config = picam2.create_still_configuration()
 	#picam2.configure(capture_config)
 	#config = picam.create_preview_configuration()
-	config = picam.create_still_configuration()
+	#config = picam.create_still_configuration()
+	#config = picam.create_still_configuration(main={"size": (1080, 720)})
+	config = picam.create_still_configuration(main={"size": (1920, 1080)})
 	picam.configure(config)
 	picam.start()
 	# todo: add a way to check if initialized properly
@@ -144,6 +159,9 @@ async def main(argv):
 	# initialize azure iot related things
 	azure_client_init()
 	
+	#initialize fps calculator
+	fps = FPS()
+	
 	with ImageImpulseRunner(modelfile) as runner:
 		try:
 			model_info = runner.init()
@@ -161,50 +179,68 @@ async def main(argv):
 			
 			# todo: change this loop to work only when camera is available
 			while True:
+				t1 = time.time()
 				# get image array from the camera (rgba)
 				img_csi = picam.capture_array()
-				print(len(img_csi), len(img_csi[0]))
+				t2 = time.time()
+				#print(len(img_csi), len(img_csi[0]))
 				# change that to rgb format
 				img_csi_rgb = rgba2rgb(img_csi)
+				t3 = time.time()
 				# feed to edge impulse methods
 				features, img = runner.get_features_from_image(img_csi_rgb)
+				#print(len(features))
+				t4 = time.time()
 				res = runner.classify(features)
-				print(len(img), len(img[0]))
+				t5 = time.time()
+				#print(len(img), len(img[0]))
 
 				# tradition delay is induced here
 				# todo: remove/optimize this for best frame rate
-				if (next_frame > now()):
-					time.sleep((next_frame - now()) / 1000)
+				#if (next_frame > now()):
+				#	time.sleep((next_frame - now()) / 1000)
 				
 				# if there is classification in keys()
 				# todo: check if we need all these printed results of if we need this if elif block
-				if "classification" in res["result"].keys():
-					print('Result (%d ms.) ' % (res['timing']['dsp'] + res['timing']['classification']), end='')
-					for label in labels:
-						score = res['result']['classification'][label]
-						print('%s: %.2f\t' % (label, score), end='')
-					print('', flush=True)
-				elif "bounding_boxes" in res["result"].keys():
-					print('Found %d bounding boxes (%d ms.)' % (len(res["result"]["bounding_boxes"]), res['timing']['dsp'] + res['timing']['classification']))
-					for bb in res["result"]["bounding_boxes"]:
-						print('\t%s (%.2f): x=%d y=%d w=%d h=%d' % (bb['label'], bb['value'], bb['x'], bb['y'], bb['width'], bb['height']))
+				#if "classification" in res["result"].keys():
+				#	print('It is a classification')
+				#	print('Result (%d ms.) ' % (res['timing']['dsp'] + res['timing']['classification']), end='')
+				#	for label in labels:
+				#		score = res['result']['classification'][label]
+				#		print('%s: %.2f\t' % (label, score), end='')
+				#	print('', flush=True)
+				#elif "bounding_boxes" in res["result"].keys():
+				#	print('Found %d bounding boxes (%d ms.)' % (len(res["result"]["bounding_boxes"]), res['timing']['dsp'] + res['timing']['classification']))
+				#	for bb in res["result"]["bounding_boxes"]:
+				#		print('\t%s (%.2f): x=%d y=%d w=%d h=%d' % (bb['label'], bb['value'], bb['x'], bb['y'], bb['width'], bb['height']))
 						#img = cv2.rectangle(img, (bb['x'], bb['y']), (bb['x'] + bb['width'], bb['y'] + bb['height']), (255, 0, 0), 1)
+				t6 = time.time()
 						
-				if "bounding_boxes" in res["result"].keys():
+				if (("bounding_boxes" in res["result"].keys()) and (len(res["result"]["bounding_boxes"]) > 0)):
 					# get the box with the max value, save as top_dog
 					top_dog = res["result"]["bounding_boxes"][0]
-					payload = PAYLOAD.format(x_start=top_dog["x"], y_start=top_dog["y"], height=top_dog["height"], width=top_dog["width"])
+					payload = PAYLOAD.format(x_start=top_dog["x"], y_start=top_dog["y"], height=top_dog["height"], width=top_dog["width"], prob=top_dog["value"])
 					img = cv2.rectangle(img, (top_dog['x'], top_dog['y']), (top_dog['x'] + top_dog['width'], top_dog['y'] + top_dog['height']), (255, 0, 0), 1)
 					await azure_client_send_payload(payload)
 						
 				# todo: remove this entirely for the demo. We do not even need to spend time to check the if condition every time
 				# this is only for visualization at the edge
-				if (show_camera):
-					#cv2.imshow('edgeimpulse', cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-					video.write(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-					if cv2.waitKey(1) == ord('q'):
-						break
-
+				#if (show_camera):
+				#	#cv2.imshow('edgeimpulse', cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+				#	video.write(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+				#	if cv2.waitKey(1) == ord('q'):
+				#		break
+				
+				
+				
+				#print('PI Capture Array t1:', t2 - t1)
+				#print('Convert to RGB t2:', t3 - t2)
+				#print('Get Features, Image t3:', t4 - t3)
+				#print('Classify t4:', t5 - t4)
+				#print('If Conditions t5:', t6 - t5)
+				#print('Total:', t6 - t1)
+				3#print('FPS:', (1/(t6-t1)))
+				print(fps())
 				#next_frame = now() + 100
 
 		finally:

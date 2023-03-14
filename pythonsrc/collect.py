@@ -73,11 +73,15 @@ def camera_init():
 	global picam
 	print('Opening CSI Camera with Picamera2 Library')
 	picam = Picamera2()
+	# picam.close()
 	#preview_config = picam2.create_preview_configuration()
 	#capture_config = picam2.create_still_configuration()
 	#picam2.configure(capture_config)
 	#config = picam.create_preview_configuration()
-	config = picam.create_still_configuration()
+	#config = picam.create_still_configuration()
+	config = picam.create_still_configuration(main={"size": (1920, 1080)})
+	#config = picam.create_still_configuration(main={"size": (1080, 720)})
+	#camera_config = picam2.create_still_configuration(main={"size": (1920, 1080)}, lores={"size": (640, 480)}, display="lores")
 	picam.configure(config)
 	picam.start()
 	# todo: add a way to check if initialized properly
@@ -163,6 +167,7 @@ async def main(argv):
 				# change that to rgb format
 				# img_csi_rgb = rgba2rgb(img_csi)
 				img_csi_rgb = img_csi
+				print(len(img_csi_rgb), len(img_csi_rgb[0]))
 				# feed to edge impulse methods
 				features, img = runner.get_features_from_image(img_csi_rgb)
 				res = runner.classify(features)
@@ -199,7 +204,7 @@ async def main(argv):
 				if (show_camera):
 					#cv2.imshow('edgeimpulse', cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
 					# dst = cv2.cvtColor(img, code)
-					cv2.imwrite('images/file' + str(iterator) + '.jpg', cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+					cv2.imwrite('images/test' + str(iterator) + '.jpg', cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
 					if (iterator == start + 10):
 						break
 
